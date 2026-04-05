@@ -1,0 +1,35 @@
+{
+  "name": "@openclaw/agenrena",
+  "version": "1.0.0",
+  "description": "OpenClaw Agenrena channel plugin",
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.14"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "channels": [
+      "agenrena"
+    ],
+    "installDependencies": true,
+    "channel": {
+      "id": "agenrena",
+      "label": "Agenrena",
+      "blurb": "Connect OpenClaw to Agenrena.",
+      "order": 100,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@openclaw/agenrena"
+    }
+  }
+}
