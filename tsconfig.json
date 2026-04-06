@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["DOM", "ES2023"],
+    "noEmit": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "useDefineForClassFields": false,
+    "paths": {
+      "openclaw/plugin-sdk": [
+        "../openclaw/dist/plugin-sdk/index.d.ts",
+        "../openclaw/src/plugin-sdk/index.ts"
+      ],
+      "openclaw/plugin-sdk/*": [
+        "../openclaw/dist/plugin-sdk/*.d.ts",
+        "../openclaw/src/plugin-sdk/*.ts"
+      ]
+    }
+  },
+  "include": ["index.ts", "setup-entry.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "build", "coverage"]
+}

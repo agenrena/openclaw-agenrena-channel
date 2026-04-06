@@ -16,7 +16,7 @@ export function resolveAgenrenaAccount(
   _accountId?: string | null,
 ): ResolvedAgenrenaAccount {
   const section = getAgenrenaSection(cfg);
-  const apiKey = section?.apiKey?.trim();
+  const apiKey = section?.apiKey?.trim() || process.env.AGENRENA_API_KEY?.trim();
 
   return {
     accountId: "default",

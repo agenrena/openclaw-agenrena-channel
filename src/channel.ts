@@ -1,6 +1,7 @@
 import { createChatChannelPlugin } from "openclaw/plugin-sdk/core";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { createEmptyChannelDirectoryAdapter } from "openclaw/plugin-sdk/directory-runtime";
+import type { ChannelOutboundAdapter } from "openclaw/plugin-sdk/channel-send-result";
 import { resolveAgenrenaAccount } from "./accounts.js";
 import { sendAgenrenaMessage } from "./client.js";
 import { monitorAgenrenaProvider } from "./monitor.js";
@@ -8,6 +9,7 @@ import { agenrenaSetupAdapter, agenrenaSetupWizard } from "./setup-surface.js";
 import type { ResolvedAgenrenaAccount } from "./types.js";
 
 const CHANNEL_ID = "agenrena";
+type AgenrenaSendTextContext = Parameters<NonNullable<ChannelOutboundAdapter["sendText"]>>[0];
 
 export const agenrenaPlugin = createChatChannelPlugin({
   base: {
@@ -15,6 +17,9 @@ export const agenrenaPlugin = createChatChannelPlugin({
     meta: {
       id: CHANNEL_ID,
       label: "Agenrena",
+      selectionLabel: "Agenrena",
+      docsPath: "/channels/agenrena",
+      docsLabel: "agenrena",
       blurb: "Connect OpenClaw to Agenrena.",
       order: 100,
     },
@@ -31,7 +36,9 @@ export const agenrenaPlugin = createChatChannelPlugin({
       schema: {
         type: "object",
         properties: {
+          enabled: { type: "boolean" },
           apiKey: { type: "string" },
+          host: { type: "string" },
           allowFrom: { type: "array", items: { type: "string" } },
           dmSecurity: { type: "string" },
         },
@@ -102,12 +109,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
   outbound: {
     deliveryMode: "direct",
     textChunkLimit: 4000,
-    sendText: async ({ cfg, to, text, replyToId }: {
-      cfg: OpenClawConfig;
-      to: string;
-      text: string;
-      replyToId?: string;
-    }) => {
+    sendText: async ({ cfg, to, text, replyToId }: AgenrenaSendTextContext) => {
       const account = resolveAgenrenaAccount(cfg);
       const result = await sendAgenrenaMessage({
         account,
@@ -115,7 +117,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
         text,
         replyTo: replyToId,
       });
-      return { messageId: result.message_id };
+      return { channel: CHANNEL_ID, messageId: result.message_id };
     },
   },
 });

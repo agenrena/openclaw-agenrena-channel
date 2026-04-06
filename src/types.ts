@@ -1,10 +1,12 @@
+import type { DmPolicy } from "openclaw/plugin-sdk/setup";
+
 /** Agenrena plugin configuration stored in openclaw config. */
 export type AgenrenaConfig = {
   enabled?: boolean;
   apiKey?: string;
   host?: string;
   allowFrom?: string[];
-  dmSecurity?: string;
+  dmSecurity?: DmPolicy;
 };
 
 /** Resolved account after reading config. */
@@ -15,7 +17,7 @@ export type ResolvedAgenrenaAccount = {
   apiKey?: string;
   host: string;
   allowFrom: string[];
-  dmPolicy?: string;
+  dmPolicy?: DmPolicy;
 };
 
 /** Inbound WebSocket message from Agenrena. */

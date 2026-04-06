@@ -66,7 +66,7 @@ export async function sendAgenrenaMessage(params: {
   account: ResolvedAgenrenaAccount;
   channelId: string;
   text: string;
-  replyTo?: string;
+  replyTo?: string | null;
 }): Promise<AgenrenaSendResult> {
   const { account, channelId, text, replyTo } = params;
   const host = resolveHost(account);

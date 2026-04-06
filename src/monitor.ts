@@ -1,5 +1,4 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
-import { waitUntilAbort } from "openclaw/plugin-sdk/channel-lifecycle";
 import { sendAgenrenaMessage, createAgenrenaWsClient } from "./client.js";
 import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbound-context.js";
 import { getAgenrenaRuntime } from "./runtime.js";
@@ -117,7 +116,7 @@ export async function monitorAgenrenaProvider(params: {
     function connect() {
       if (stopped) return;
 
-      const ws = createAgenrenaWsClient({
+      createAgenrenaWsClient({
         account,
         abortSignal,
         onMessage: (event: AgenrenaWsEvent) => {

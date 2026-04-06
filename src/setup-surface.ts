@@ -1,5 +1,4 @@
 import type { ChannelSetupAdapter } from "openclaw/plugin-sdk/channel-setup";
-import type { OpenClawConfig } from "openclaw/plugin-sdk/config-runtime";
 import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk/routing";
 import {
   createTopLevelChannelParsedAllowFromPrompt,
@@ -9,10 +8,18 @@ import {
   patchTopLevelChannelConfigSection,
 } from "openclaw/plugin-sdk/setup";
 import type { ChannelSetupDmPolicy, ChannelSetupWizard } from "openclaw/plugin-sdk/setup";
-import { formatDocsLink } from "openclaw/plugin-sdk/setup";
 import { resolveAgenrenaAccount } from "./accounts.js";
 
 const channel = "agenrena" as const;
+
+function getPersistedAgenrenaApiKey(cfg: { channels?: Record<string, unknown> }): string | undefined {
+  const section = cfg.channels?.[channel] as { apiKey?: string } | undefined;
+  return section?.apiKey?.trim() || undefined;
+}
+
+function getEnvAgenrenaApiKey(): string | undefined {
+  return process.env.AGENRENA_API_KEY?.trim() || undefined;
+}
 
 const AGENRENA_SETUP_HELP_LINES = [
   "Enter your Agenrena API key to connect.",
@@ -41,9 +48,7 @@ const agenrenaDmPolicy: ChannelSetupDmPolicy = createTopLevelChannelDmPolicy({
   channel,
   policyKey: "channels.agenrena.dmSecurity",
   allowFromKey: "channels.agenrena.allowFrom",
-  getCurrent: (cfg) =>
-    (cfg.channels as Record<string, { dmSecurity?: string }> | undefined)?.agenrena?.dmSecurity ??
-    "allowlist",
+  getCurrent: (cfg) => resolveAgenrenaAccount(cfg).dmPolicy ?? "allowlist",
   promptAllowFrom: promptAgenrenaAllowFrom,
 });
 
@@ -56,20 +61,20 @@ export const agenrenaSetupAdapter: ChannelSetupAdapter = {
       patch: name?.trim() ? { name: name.trim() } : {},
     }),
   validateInput: ({ input }) => {
-    const typedInput = input as { useEnv?: boolean; apiKey?: string };
-    if (!typedInput.useEnv && !typedInput.apiKey?.trim()) {
+    const typedInput = input as { useEnv?: boolean; token?: string };
+    if (!typedInput.useEnv && !typedInput.token?.trim()) {
       return "Agenrena requires --api-key or --use-env.";
     }
     return null;
   },
   applyAccountConfig: ({ cfg, input }) => {
-    const typedInput = input as { useEnv?: boolean; apiKey?: string };
+    const typedInput = input as { useEnv?: boolean; token?: string };
     return patchTopLevelChannelConfigSection({
       cfg,
       channel,
       enabled: true,
       clearFields: typedInput.useEnv ? ["apiKey"] : undefined,
-      patch: typedInput.useEnv ? {} : { apiKey: typedInput.apiKey?.trim() },
+      patch: typedInput.useEnv ? {} : { apiKey: typedInput.token?.trim() },
     });
   },
 };
@@ -98,8 +103,8 @@ export const agenrenaSetupWizard: ChannelSetupWizard = {
     preferredEnvVar: "AGENRENA_API_KEY",
     isAvailable: ({ cfg, accountId }) =>
       accountId === DEFAULT_ACCOUNT_ID &&
-      Boolean(process.env.AGENRENA_API_KEY?.trim()) &&
-      !resolveAgenrenaAccount(cfg).apiKey?.trim(),
+      Boolean(getEnvAgenrenaApiKey()) &&
+      !getPersistedAgenrenaApiKey(cfg),
     apply: async ({ cfg }) =>
       patchTopLevelChannelConfigSection({
         cfg,
@@ -111,7 +116,7 @@ export const agenrenaSetupWizard: ChannelSetupWizard = {
   },
   credentials: [
     {
-      inputKey: "apiKey",
+      inputKey: "token",
       providerHint: channel,
       credentialLabel: "API key",
       preferredEnvVar: "AGENRENA_API_KEY",
@@ -122,12 +127,14 @@ export const agenrenaSetupWizard: ChannelSetupWizard = {
       inputPrompt: "Agenrena API key",
       allowEnv: ({ accountId }) => accountId === DEFAULT_ACCOUNT_ID,
       inspect: ({ cfg, accountId }) => {
+        const persistedApiKey = getPersistedAgenrenaApiKey(cfg);
+        const envApiKey = getEnvAgenrenaApiKey();
         const account = resolveAgenrenaAccount(cfg, accountId);
         return {
           accountConfigured: account.configured,
-          hasConfiguredValue: Boolean(account.apiKey?.trim()),
-          resolvedValue: account.apiKey?.trim(),
-          envValue: process.env.AGENRENA_API_KEY?.trim(),
+          hasConfiguredValue: Boolean(persistedApiKey),
+          resolvedValue: persistedApiKey,
+          envValue: envApiKey,
         };
       },
       applyUseEnv: async ({ cfg }) =>
