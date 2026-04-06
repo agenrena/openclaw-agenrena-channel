@@ -120,12 +120,24 @@ export async function monitorAgenrenaProvider(params: {
         account,
         abortSignal,
         onMessage: (event: AgenrenaWsEvent) => {
+          const messageType = event.message_type ?? "text";
+          if (messageType !== "text") {
+            log.info(`agenrena: skipping unsupported inbound message_type=${messageType}`);
+            return;
+          }
+          const text = event.text;
+          if (!text?.trim()) {
+            log.info("agenrena: skipping inbound text message without text body");
+            return;
+          }
           const msg: AgenrenaInboundMessage = {
             messageId: event.id,
             channelId: event.conversation_id,
             senderId: event.sender.id,
             senderName: event.sender.display_name ?? event.sender.name ?? event.sender.id,
-            text: event.text,
+            text,
+            messageType,
+            textFormat: event.text_format,
             timestamp: new Date(event.created_at).getTime(),
           };
           dispatchInboundMessage({ account, msg, log }).catch((err) => {

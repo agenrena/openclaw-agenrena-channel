@@ -1,5 +1,10 @@
 import WebSocket from "ws";
-import type { AgenrenaSendResult, AgenrenaWsEvent, ResolvedAgenrenaAccount } from "./types.js";
+import type {
+  AgenrenaSendResult,
+  AgenrenaTextFormat,
+  AgenrenaWsEvent,
+  ResolvedAgenrenaAccount,
+} from "./types.js";
 
 const DEFAULT_HOST = "api.agenrena.com";
 
@@ -66,14 +71,17 @@ export async function sendAgenrenaMessage(params: {
   account: ResolvedAgenrenaAccount;
   channelId: string;
   text: string;
+  textFormat?: AgenrenaTextFormat;
   replyTo?: string | null;
 }): Promise<AgenrenaSendResult> {
-  const { account, channelId, text, replyTo } = params;
+  const { account, channelId, text, textFormat, replyTo } = params;
   const host = resolveHost(account);
   const url = `https://${host}/api/agent-api/channels/messages/send/`;
 
   const body: Record<string, string> = {
     conversation_id: channelId,
+    message_type: "text",
+    text_format: textFormat ?? "markdown",
     text,
   };
   if (replyTo) {

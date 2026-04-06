@@ -1,5 +1,8 @@
 import type { DmPolicy } from "openclaw/plugin-sdk/setup";
 
+export type AgenrenaMessageType = "text" | "image";
+export type AgenrenaTextFormat = "plain" | "markdown";
+
 /** Agenrena plugin configuration stored in openclaw config. */
 export type AgenrenaConfig = {
   enabled?: boolean;
@@ -24,13 +27,15 @@ export type ResolvedAgenrenaAccount = {
 export type AgenrenaWsEvent = {
   id: string;
   conversation_id: string;
+  message_type?: AgenrenaMessageType;
+  text_format?: AgenrenaTextFormat;
   sender: {
     type: string;
     id: string;
     display_name?: string;
     name?: string;
   };
-  text: string;
+  text?: string;
   reply_to_id?: string | null;
   created_at: string;
 };

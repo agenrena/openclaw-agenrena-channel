@@ -1,4 +1,4 @@
-import type { ResolvedAgenrenaAccount } from "./types.js";
+import type { AgenrenaMessageType, AgenrenaTextFormat, ResolvedAgenrenaAccount } from "./types.js";
 
 const CHANNEL_ID = "agenrena";
 
@@ -8,6 +8,8 @@ export type AgenrenaInboundMessage = {
   senderId: string;
   senderName: string;
   text: string;
+  messageType: AgenrenaMessageType;
+  textFormat?: AgenrenaTextFormat;
   timestamp: number;
 };
 
