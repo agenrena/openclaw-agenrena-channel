@@ -10,6 +10,7 @@ export type AgenrenaInboundMessage = {
   text: string;
   messageType: AgenrenaMessageType;
   textFormat?: AgenrenaTextFormat;
+  context?: unknown | null;
   timestamp: number;
 };
 
@@ -37,6 +38,7 @@ export function buildAgenrenaInboundContext<TContext>(params: {
     Surface: CHANNEL_ID,
     ConversationLabel: msg.senderName || msg.senderId,
     Timestamp: msg.timestamp,
+    AgenrenaContext: msg.context ?? undefined,
     CommandAuthorized: true,
   });
 }

@@ -137,6 +137,7 @@ export async function monitorAgenrenaProvider(params: {
             text,
             messageType,
             textFormat: event.text_format,
+            context: event.context,
             timestamp: new Date(event.created_at).getTime(),
           };
           dispatchInboundMessage({ account, msg, log }).catch((err) => {

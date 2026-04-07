@@ -29,6 +29,7 @@ export type AgenrenaWsEvent = {
   conversation_id: string;
   message_type?: AgenrenaMessageType;
   text_format?: AgenrenaTextFormat;
+  context?: unknown | null;
   sender: {
     type: string;
     id: string;
