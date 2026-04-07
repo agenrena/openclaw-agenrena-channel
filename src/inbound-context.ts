@@ -2,6 +2,17 @@ import type { AgenrenaMessageType, AgenrenaTextFormat, ResolvedAgenrenaAccount }
 
 const CHANNEL_ID = "agenrena";
 
+function buildAgenrenaUntrustedContext(context: unknown | null | undefined): string[] | undefined {
+  if (context == null) {
+    return undefined;
+  }
+  try {
+    return [`Agenrena context JSON: ${JSON.stringify(context)}`];
+  } catch {
+    return ["Agenrena context present but could not be serialized"];
+  }
+}
+
 export type AgenrenaInboundMessage = {
   messageId: string;
   channelId: string;
@@ -21,6 +32,7 @@ export function buildAgenrenaInboundContext<TContext>(params: {
   sessionKey: string;
 }): TContext {
   const { account, msg, sessionKey } = params;
+  const untrustedContext = buildAgenrenaUntrustedContext(msg.context);
   return params.finalizeInboundContext({
     Body: msg.text,
     RawBody: msg.text,
@@ -38,6 +50,7 @@ export function buildAgenrenaInboundContext<TContext>(params: {
     Surface: CHANNEL_ID,
     ConversationLabel: msg.senderName || msg.senderId,
     Timestamp: msg.timestamp,
+    UntrustedContext: untrustedContext,
     AgenrenaContext: msg.context ?? undefined,
     CommandAuthorized: true,
   });
