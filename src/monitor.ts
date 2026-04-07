@@ -52,7 +52,6 @@ async function dispatchInboundMessage(params: {
     agentId: route.agentId,
     accountId: params.account.accountId,
     channelId: params.msg.channelId,
-    senderId: params.msg.senderId,
     identityLinks: currentCfg.session?.identityLinks,
   });
 
