@@ -1,4 +1,4 @@
-import type { AgenrenaMessageType, AgenrenaTextFormat, ResolvedAgenrenaAccount } from "./types.js";
+import type { AgenrenaImage, AgenrenaMessageType, AgenrenaTextFormat, ResolvedAgenrenaAccount } from "./types.js";
 
 const CHANNEL_ID = "agenrena";
 
@@ -22,6 +22,7 @@ export type AgenrenaInboundMessage = {
   messageType: AgenrenaMessageType;
   textFormat?: AgenrenaTextFormat;
   context?: unknown | null;
+  images: AgenrenaImage[];
   timestamp: number;
 };
 
@@ -33,6 +34,10 @@ export function buildAgenrenaInboundContext<TContext>(params: {
 }): TContext {
   const { account, msg, sessionKey } = params;
   const untrustedContext = buildAgenrenaUntrustedContext(msg.context);
+
+  const mediaUrls = msg.images.map((img) => img.url);
+  const mediaTypes = msg.images.map((img) => img.mime_type);
+
   return params.finalizeInboundContext({
     Body: msg.text,
     RawBody: msg.text,
@@ -53,5 +58,11 @@ export function buildAgenrenaInboundContext<TContext>(params: {
     UntrustedContext: untrustedContext,
     AgenrenaContext: msg.context ?? undefined,
     CommandAuthorized: true,
+    ...(mediaUrls.length > 0 && {
+      MediaUrl: mediaUrls[0],
+      MediaType: mediaTypes[0],
+      MediaUrls: mediaUrls,
+      MediaTypes: mediaTypes,
+    }),
   });
 }

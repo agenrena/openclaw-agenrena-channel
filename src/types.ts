@@ -23,6 +23,16 @@ export type ResolvedAgenrenaAccount = {
   dmPolicy?: DmPolicy;
 };
 
+/** Image attachment from Agenrena. */
+export type AgenrenaImage = {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+  mime_type: string;
+  sort_order: number;
+};
+
 /** Inbound WebSocket message from Agenrena. */
 export type AgenrenaWsEvent = {
   id: string;
@@ -37,6 +47,7 @@ export type AgenrenaWsEvent = {
     name?: string;
   };
   text?: string;
+  images: AgenrenaImage[];
   reply_to_id?: string | null;
   created_at: string;
 };

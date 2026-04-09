@@ -120,13 +120,14 @@ export async function monitorAgenrenaProvider(params: {
         abortSignal,
         onMessage: (event: AgenrenaWsEvent) => {
           const messageType = event.message_type ?? "text";
-          if (messageType !== "text") {
+          if (messageType !== "text" && messageType !== "image") {
             log.info(`agenrena: skipping unsupported inbound message_type=${messageType}`);
             return;
           }
-          const text = event.text;
-          if (!text?.trim()) {
-            log.info("agenrena: skipping inbound text message without text body");
+          const text = event.text ?? "";
+          const images = event.images ?? [];
+          if (!text.trim() && images.length === 0) {
+            log.info("agenrena: skipping inbound message without text or images");
             return;
           }
           const msg: AgenrenaInboundMessage = {
@@ -138,6 +139,7 @@ export async function monitorAgenrenaProvider(params: {
             messageType,
             textFormat: event.text_format,
             context: event.context,
+            images,
             timestamp: new Date(event.created_at).getTime(),
           };
           dispatchInboundMessage({ account, msg, log }).catch((err) => {

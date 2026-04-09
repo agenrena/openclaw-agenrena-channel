@@ -25,7 +25,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
     },
     capabilities: {
       chatTypes: ["direct"],
-      media: false,
+      media: true,
       threads: false,
       reactions: false,
       edit: false,
