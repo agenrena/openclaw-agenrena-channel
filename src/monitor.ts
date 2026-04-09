@@ -55,7 +55,7 @@ async function dispatchInboundMessage(params: {
     identityLinks: currentCfg.session?.identityLinks,
   });
 
-  const msgCtx = buildAgenrenaInboundContext({
+  const msgCtx = await buildAgenrenaInboundContext({
     finalizeInboundContext: resolvedRt.channel.reply.finalizeInboundContext,
     account: params.account,
     msg: params.msg,

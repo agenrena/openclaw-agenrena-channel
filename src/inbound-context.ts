@@ -1,3 +1,4 @@
+import { fetchRemoteMedia, saveMediaBuffer } from "openclaw/plugin-sdk/media-runtime";
 import type { AgenrenaImage, AgenrenaMessageType, AgenrenaTextFormat, ResolvedAgenrenaAccount } from "./types.js";
 
 const CHANNEL_ID = "agenrena";
@@ -26,17 +27,36 @@ export type AgenrenaInboundMessage = {
   timestamp: number;
 };
 
-export function buildAgenrenaInboundContext<TContext>(params: {
+async function downloadAgenrenaImages(
+  images: AgenrenaImage[],
+): Promise<{ paths: string[]; types: string[] }> {
+  const paths: string[] = [];
+  const types: string[] = [];
+  for (const img of images) {
+    try {
+      const fetched = await fetchRemoteMedia({ url: img.url });
+      const contentType = fetched.contentType || img.mime_type;
+      const saved = await saveMediaBuffer(fetched.buffer, contentType, "inbound");
+      paths.push(saved.path);
+      types.push(saved.contentType || contentType);
+    } catch (err) {
+      console.error(`agenrena: failed to download image ${img.id}: ${String(err)}`);
+    }
+  }
+  return { paths, types };
+}
+
+export async function buildAgenrenaInboundContext<TContext>(params: {
   finalizeInboundContext: (ctx: Record<string, unknown>) => TContext;
   account: ResolvedAgenrenaAccount;
   msg: AgenrenaInboundMessage;
   sessionKey: string;
-}): TContext {
+}): Promise<TContext> {
   const { account, msg, sessionKey } = params;
   const untrustedContext = buildAgenrenaUntrustedContext(msg.context);
 
-  const mediaUrls = msg.images.map((img) => img.url);
-  const mediaTypes = msg.images.map((img) => img.mime_type);
+  const media =
+    msg.images.length > 0 ? await downloadAgenrenaImages(msg.images) : null;
 
   return params.finalizeInboundContext({
     Body: msg.text,
@@ -58,11 +78,11 @@ export function buildAgenrenaInboundContext<TContext>(params: {
     UntrustedContext: untrustedContext,
     AgenrenaContext: msg.context ?? undefined,
     CommandAuthorized: true,
-    ...(mediaUrls.length > 0 && {
-      MediaUrl: mediaUrls[0],
-      MediaType: mediaTypes[0],
-      MediaUrls: mediaUrls,
-      MediaTypes: mediaTypes,
+    ...(media && media.paths.length > 0 && {
+      MediaPath: media.paths[0],
+      MediaType: media.types[0],
+      MediaPaths: media.paths,
+      MediaTypes: media.types,
     }),
   });
 }
