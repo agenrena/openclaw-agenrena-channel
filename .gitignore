@@ -10,3 +10,5 @@ coverage/
 .env
 .env.*
 !.env.example
+
+CHANNEL_PLUGIN_GUIDE_ZH.md
