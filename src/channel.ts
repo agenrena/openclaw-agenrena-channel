@@ -3,13 +3,14 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { createEmptyChannelDirectoryAdapter } from "openclaw/plugin-sdk/directory-runtime";
 import type { ChannelOutboundAdapter } from "openclaw/plugin-sdk/channel-send-result";
 import { resolveAgenrenaAccount } from "./accounts.js";
-import { sendAgenrenaMessage } from "./client.js";
+import { sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
 import { monitorAgenrenaProvider } from "./monitor.js";
 import { agenrenaSetupAdapter, agenrenaSetupWizard } from "./setup-surface.js";
 import type { ResolvedAgenrenaAccount } from "./types.js";
 
 const CHANNEL_ID = "agenrena";
 type AgenrenaSendTextContext = Parameters<NonNullable<ChannelOutboundAdapter["sendText"]>>[0];
+type AgenrenaSendMediaContext = Parameters<NonNullable<ChannelOutboundAdapter["sendMedia"]>>[0];
 
 export const agenrenaPlugin = createChatChannelPlugin({
   base: {
@@ -116,6 +117,29 @@ export const agenrenaPlugin = createChatChannelPlugin({
         channelId: to,
         text,
         replyTo: replyToId,
+      });
+      return { channel: CHANNEL_ID, messageId: result.message_id };
+    },
+    sendMedia: async ({
+      cfg,
+      to,
+      text,
+      mediaUrl,
+      replyToId,
+      mediaAccess,
+      mediaLocalRoots,
+      mediaReadFile,
+    }: AgenrenaSendMediaContext) => {
+      const account = resolveAgenrenaAccount(cfg);
+      const result = await sendAgenrenaMediaMessage({
+        account,
+        channelId: to,
+        mediaUrls: mediaUrl ? [mediaUrl] : [],
+        text,
+        replyTo: replyToId,
+        mediaAccess,
+        mediaLocalRoots,
+        mediaReadFile,
       });
       return { channel: CHANNEL_ID, messageId: result.message_id };
     },

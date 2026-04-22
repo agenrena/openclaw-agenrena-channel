@@ -33,6 +33,11 @@ export type AgenrenaImage = {
   sort_order: number;
 };
 
+/** Image reference used when sending an Agenrena image message. */
+export type AgenrenaImageRef = {
+  id: string;
+};
+
 /** Inbound WebSocket message from Agenrena. */
 export type AgenrenaWsEvent = {
   id: string;
@@ -55,4 +60,16 @@ export type AgenrenaWsEvent = {
 /** Result from sending a message via REST API. */
 export type AgenrenaSendResult = {
   message_id: string;
+};
+
+/** One presigned upload target pair returned for an outbound image. */
+export type AgenrenaPresignedImageUpload = {
+  id: string;
+  image_upload_url: string;
+  thumbnail_upload_url: string;
+};
+
+/** Result from presigning one or more outbound images. */
+export type AgenrenaPresignImagesResult = {
+  images: AgenrenaPresignedImageUpload[];
 };

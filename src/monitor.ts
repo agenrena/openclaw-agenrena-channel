@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
-import { sendAgenrenaMessage, createAgenrenaWsClient } from "./client.js";
+import { deliverTextOrMediaReply, type OutboundReplyPayload } from "openclaw/plugin-sdk/reply-payload";
+import { createAgenrenaWsClient, sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
 import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbound-context.js";
 import { getAgenrenaRuntime } from "./runtime.js";
 import { buildAgenrenaSessionKey } from "./session-key.js";
@@ -66,14 +67,33 @@ async function dispatchInboundMessage(params: {
     ctx: msgCtx,
     cfg: currentCfg,
     dispatcherOptions: {
-      deliver: async (payload: { text?: string; body?: string }) => {
-        const text = payload.text ?? payload.body;
-        if (!text) return;
-        await sendAgenrenaMessage({
-          account: params.account,
-          channelId: params.msg.channelId,
+      deliver: async (payload: OutboundReplyPayload & { body?: string }) => {
+        const text = payload.text ?? payload.body ?? "";
+        await deliverTextOrMediaReply({
+          payload: {
+            text,
+            mediaUrl: payload.mediaUrl,
+            mediaUrls: payload.mediaUrls,
+            replyToId: params.msg.messageId,
+          },
           text,
-          replyTo: params.msg.messageId,
+          sendText: async (nextText) => {
+            await sendAgenrenaMessage({
+              account: params.account,
+              channelId: params.msg.channelId,
+              text: nextText,
+              replyTo: params.msg.messageId,
+            });
+          },
+          sendMedia: async ({ mediaUrl, caption }) => {
+            await sendAgenrenaMediaMessage({
+              account: params.account,
+              channelId: params.msg.channelId,
+              mediaUrls: [mediaUrl],
+              text: caption,
+              replyTo: params.msg.messageId,
+            });
+          },
         });
       },
       onReplyStart: () => {
