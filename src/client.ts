@@ -223,6 +223,15 @@ export async function sendAgenrenaMediaMessage(
     }),
   );
 
+  // Agenrena treats image and text as mutually exclusive message types.
+  // Send image first (primary content, more likely to fail), then text as a separate message.
+  const imageResult = await sendAgenrenaImageMessage({
+    account: params.account,
+    channelId: params.channelId,
+    images: presigned.images.map((entry) => ({ id: entry.id })),
+    replyTo: params.replyTo,
+  });
+
   const text = params.text?.trim();
   if (text) {
     await sendAgenrenaTextMessage({
@@ -233,12 +242,7 @@ export async function sendAgenrenaMediaMessage(
     });
   }
 
-  return await sendAgenrenaImageMessage({
-    account: params.account,
-    channelId: params.channelId,
-    images: presigned.images.map((entry) => ({ id: entry.id })),
-    replyTo: params.replyTo,
-  });
+  return imageResult;
 }
 
 /** Create a WebSocket connection to Agenrena for receiving events. */
@@ -255,21 +259,14 @@ export function createAgenrenaWsClient(params: {
 
   const ws = new WebSocket(url);
 
-  ws.on("open", () => {
-    console.log(`agenrena: WebSocket connected to ${host}`);
-  });
-
   ws.on("message", (raw) => {
-    const rawStr = String(raw);
-    console.log(`agenrena: WS raw message received: ${rawStr.slice(0, 500)}`);
     try {
-      const parsed = JSON.parse(rawStr) as AgenrenaWsEvent;
-      console.log(`agenrena: parsed message id: ${parsed.id}`);
+      const parsed = JSON.parse(String(raw)) as AgenrenaWsEvent;
       if (parsed.id && parsed.conversation_id && parsed.sender?.id) {
         onMessage(parsed);
       }
-    } catch (err) {
-      console.error(`agenrena: WS message parse error: ${String(err)}`);
+    } catch {
+      onError?.(new Error("agenrena: failed to parse WebSocket message"));
     }
   });
 

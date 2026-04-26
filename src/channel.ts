@@ -68,14 +68,12 @@ export const agenrenaPlugin = createChatChannelPlugin({
         abortSignal: AbortSignal;
         log?: { info: (msg: string) => void; error: (msg: string) => void };
       }) => {
-        console.log("agenrena: startAccount called");
         const account = resolveAgenrenaAccount(ctx.cfg);
-        console.log(`agenrena: enabled=${account.enabled}, configured=${account.configured}, host=${account.host}`);
         if (!account.enabled || !account.configured) {
-          console.log("agenrena: account not configured or disabled, skipping");
+          ctx.log?.info("agenrena: account not configured or disabled, skipping");
           return;
         }
-        console.log(`agenrena: starting monitor (host: ${account.host})`);
+        ctx.log?.info(`agenrena: starting monitor (host: ${account.host})`);
         return monitorAgenrenaProvider({
           account,
           abortSignal: ctx.abortSignal,
