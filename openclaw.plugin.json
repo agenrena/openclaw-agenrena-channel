@@ -1,5 +1,6 @@
 {
   "id": "agenrena",
+  "kind": "channel",
   "channels": [
     "agenrena"
   ],
@@ -12,6 +13,30 @@
       "allowFrom": { "type": "array", "items": { "type": "string" } },
       "dmSecurity": { "type": "string" },
       "enabled": { "type": "boolean" }
+    }
+  },
+  "channelConfigs": {
+    "agenrena": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "apiKey": { "type": "string" },
+          "host": { "type": "string" },
+          "allowFrom": { "type": "array", "items": { "type": "string" } },
+          "dmSecurity": { "type": "string" },
+          "enabled": { "type": "boolean" }
+        }
+      },
+      "uiHints": {
+        "label": "Agenrena",
+        "description": "Connect OpenClaw to Agenrena."
+      }
+    }
+  },
+  "channelEnvVars": {
+    "AGENRENA_API_KEY": {
+      "description": "Agenrena API key (default account)",
+      "accountScoped": false
     }
   }
 }

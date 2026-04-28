@@ -3,6 +3,16 @@
   "version": "1.0.0",
   "description": "OpenClaw Agenrena channel plugin",
   "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./setup": "./setup-entry.ts"
+  },
+  "files": [
+    "index.ts",
+    "setup-entry.ts",
+    "src/",
+    "openclaw.plugin.json"
+  ],
   "dependencies": {
     "ws": "^8.18.0"
   },

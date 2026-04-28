@@ -1,4 +1,4 @@
-import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
 import { deliverTextOrMediaReply, type OutboundReplyPayload } from "openclaw/plugin-sdk/reply-payload";
 import { createAgenrenaWsClient, sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
 import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbound-context.js";

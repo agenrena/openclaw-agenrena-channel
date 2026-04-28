@@ -1,5 +1,5 @@
-import { createChatChannelPlugin } from "openclaw/plugin-sdk/core";
-import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import { createChatChannelPlugin } from "openclaw/plugin-sdk/channel-core";
+import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
 import { createEmptyChannelDirectoryAdapter } from "openclaw/plugin-sdk/directory-runtime";
 import type { ChannelOutboundAdapter } from "openclaw/plugin-sdk/channel-send-result";
 import { resolveAgenrenaAccount } from "./accounts.js";
@@ -51,6 +51,14 @@ export const agenrenaPlugin = createChatChannelPlugin({
       listAccountIds: () => ["default"],
       resolveAccount: (cfg: OpenClawConfig, accountId?: string | null) =>
         resolveAgenrenaAccount(cfg, accountId),
+      inspectAccount: (cfg: OpenClawConfig, accountId?: string | null) => {
+        const account = resolveAgenrenaAccount(cfg, accountId);
+        return {
+          enabled: account.enabled,
+          configured: account.configured,
+          tokenStatus: account.apiKey ? "available" as const : "missing" as const,
+        };
+      },
       defaultAccountId: () => "default",
     },
     messaging: {
@@ -105,41 +113,44 @@ export const agenrenaPlugin = createChatChannelPlugin({
       },
     },
   },
+  threading: { topLevelReplyToMode: "reply" },
   outbound: {
-    deliveryMode: "direct",
-    textChunkLimit: 4000,
-    sendText: async ({ cfg, to, text, replyToId }: AgenrenaSendTextContext) => {
-      const account = resolveAgenrenaAccount(cfg);
-      const result = await sendAgenrenaMessage({
-        account,
-        channelId: to,
+    base: { deliveryMode: "direct" as const },
+    attachedResults: {
+      channel: CHANNEL_ID,
+      sendText: async ({ cfg, to, text, replyToId }: AgenrenaSendTextContext) => {
+        const account = resolveAgenrenaAccount(cfg);
+        const result = await sendAgenrenaMessage({
+          account,
+          channelId: to,
+          text,
+          replyTo: replyToId,
+        });
+        return { messageId: result.message_id };
+      },
+      sendMedia: async ({
+        cfg,
+        to,
         text,
-        replyTo: replyToId,
-      });
-      return { channel: CHANNEL_ID, messageId: result.message_id };
-    },
-    sendMedia: async ({
-      cfg,
-      to,
-      text,
-      mediaUrl,
-      replyToId,
-      mediaAccess,
-      mediaLocalRoots,
-      mediaReadFile,
-    }: AgenrenaSendMediaContext) => {
-      const account = resolveAgenrenaAccount(cfg);
-      const result = await sendAgenrenaMediaMessage({
-        account,
-        channelId: to,
-        mediaUrls: mediaUrl ? [mediaUrl] : [],
-        text,
-        replyTo: replyToId,
+        mediaUrl,
+        replyToId,
         mediaAccess,
         mediaLocalRoots,
         mediaReadFile,
-      });
-      return { channel: CHANNEL_ID, messageId: result.message_id };
+      }: AgenrenaSendMediaContext) => {
+        const account = resolveAgenrenaAccount(cfg);
+        const result = await sendAgenrenaMediaMessage({
+          account,
+          channelId: to,
+          mediaUrls: mediaUrl ? [mediaUrl] : [],
+          text,
+          replyTo: replyToId,
+          mediaAccess,
+          mediaLocalRoots,
+          mediaReadFile,
+        });
+        return { messageId: result.message_id };
+      },
     },
   },
 });
