@@ -70,6 +70,9 @@ async function dispatchInboundMessage(params: {
   const dispatchResult = await resolvedRt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
     ctx: msgCtx,
     cfg: currentCfg,
+    replyOptions: {
+      sourceReplyDeliveryMode: "automatic",
+    },
     dispatcherOptions: {
       deliver: async (payload: OutboundReplyPayload & { body?: string }) => {
         const text = payload.text ?? payload.body ?? "";
