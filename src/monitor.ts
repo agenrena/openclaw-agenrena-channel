@@ -67,12 +67,16 @@ async function dispatchInboundMessage(params: {
 
   const replyRoute = parseAgenrenaChatTarget(params.msg.target);
 
-  await resolvedRt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
+  const dispatchResult = await resolvedRt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
     ctx: msgCtx,
     cfg: currentCfg,
     dispatcherOptions: {
       deliver: async (payload: OutboundReplyPayload & { body?: string }) => {
         const text = payload.text ?? payload.body ?? "";
+        const mediaCount = [payload.mediaUrl, ...(payload.mediaUrls ?? [])].filter(Boolean).length;
+        params.log.info(
+          `agenrena: reply payload received text_length=${text.length} media_count=${mediaCount}`,
+        );
         await deliverTextOrMediaReply({
           payload: {
             text,
@@ -114,7 +118,13 @@ async function dispatchInboundMessage(params: {
     },
   });
 
-  params.log.info(`agenrena: reply dispatch completed inbound_message_id=${params.msg.messageId}`);
+  params.log.info(
+    `agenrena: reply dispatch completed inbound_message_id=${params.msg.messageId} ` +
+      `queued_final=${dispatchResult.queuedFinal} counts=${JSON.stringify(dispatchResult.counts)} ` +
+      `failed_counts=${JSON.stringify(dispatchResult.failedCounts ?? {})} ` +
+      `observed_delivery=${dispatchResult.observedReplyDelivery ?? false} ` +
+      `send_policy_denied=${dispatchResult.sendPolicyDenied ?? false}`,
+  );
 }
 
 /** Start the WebSocket monitor with auto-reconnect. */
