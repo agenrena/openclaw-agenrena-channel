@@ -11,8 +11,8 @@ import type {
 } from "./types.js";
 
 const DEFAULT_HOST = "api.agenrena.com";
-const AGENRENA_THUMBNAIL_MAX_SIDE = 512;
-const AGENRENA_THUMBNAIL_JPEG_QUALITY = 82;
+const AGENRENA_THUMBNAIL_MAX_SIDE = 300;
+const AGENRENA_THUMBNAIL_JPEG_QUALITY = 80;
 
 type OutboundMediaAccessParams = {
   mediaAccess?: {
@@ -290,6 +290,33 @@ export function createAgenrenaWsClient(params: {
   }
 
   return ws;
+}
+
+export type AgenrenaSlashCommand = {
+  name: string;
+  description: string;
+  aliases?: string[];
+  args_hint?: string;
+};
+
+/** Report agent type and optional slash commands to Agenrena. */
+export async function registerAgenrenaAgentInfo(params: {
+  account: ResolvedAgenrenaAccount;
+  agentType?: string;
+  slashCommands?: AgenrenaSlashCommand[];
+}): Promise<void> {
+  const body: Record<string, unknown> = {
+    agent_type: params.agentType ?? "openclaw",
+  };
+  if (params.slashCommands && params.slashCommands.length > 0) {
+    body["slash_commands"] = params.slashCommands;
+  }
+  await requestAgenrenaJson<unknown>({
+    account: params.account,
+    path: "/api/agent-api/agents/me/",
+    method: "PATCH",
+    body,
+  });
 }
 
 /** Send a message to Agenrena via REST API. */

@@ -38,7 +38,6 @@ export const agenrenaPlugin = createChatChannelPlugin({
         type: "object",
         properties: {
           enabled: { type: "boolean" },
-          apiKey: { type: "string" },
           host: { type: "string" },
           allowFrom: { type: "array", items: { type: "string" } },
           dmSecurity: { type: "string" },
@@ -60,6 +59,10 @@ export const agenrenaPlugin = createChatChannelPlugin({
         };
       },
       defaultAccountId: () => "default",
+      isEnabled: (account) => account.enabled,
+      isConfigured: (account) => account.configured,
+      unconfiguredReason: () =>
+        "Agenrena CLI is not logged in. Run: agenrena auth login",
     },
     messaging: {
       normalizeTarget: (target: string) => target.trim() || undefined,

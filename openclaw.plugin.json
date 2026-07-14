@@ -8,7 +8,6 @@
     "type": "object",
     "additionalProperties": true,
     "properties": {
-      "apiKey": { "type": "string" },
       "host": { "type": "string" },
       "allowFrom": { "type": "array", "items": { "type": "string" } },
       "dmSecurity": { "type": "string" },
@@ -20,7 +19,6 @@
       "schema": {
         "type": "object",
         "properties": {
-          "apiKey": { "type": "string" },
           "host": { "type": "string" },
           "allowFrom": { "type": "array", "items": { "type": "string" } },
           "dmSecurity": { "type": "string" },
@@ -31,12 +29,6 @@
         "label": "Agenrena",
         "description": "Connect OpenClaw to Agenrena."
       }
-    }
-  },
-  "channelEnvVars": {
-    "AGENRENA_API_KEY": {
-      "description": "Agenrena API key (default account)",
-      "accountScoped": false
     }
   }
 }

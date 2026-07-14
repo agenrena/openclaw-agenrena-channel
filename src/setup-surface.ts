@@ -9,21 +9,13 @@ import {
 } from "openclaw/plugin-sdk/setup";
 import type { ChannelSetupDmPolicy, ChannelSetupWizard } from "openclaw/plugin-sdk/setup";
 import { resolveAgenrenaAccount } from "./accounts.js";
+import { resolveAgenrenaCliCredentials } from "./cli-credentials.js";
 
 const channel = "agenrena" as const;
 
-function getPersistedAgenrenaApiKey(cfg: { channels?: Record<string, unknown> }): string | undefined {
-  const section = cfg.channels?.[channel] as { apiKey?: string } | undefined;
-  return section?.apiKey?.trim() || undefined;
-}
-
-function getEnvAgenrenaApiKey(): string | undefined {
-  return process.env.AGENRENA_API_KEY?.trim() || undefined;
-}
-
 const AGENRENA_SETUP_HELP_LINES = [
-  "Enter your Agenrena API key to connect.",
-  "Env var supported: AGENRENA_API_KEY (default account only).",
+  "Authentication is managed by the Agenrena CLI.",
+  "Run `agenrena auth login` before enabling this channel.",
 ];
 
 const promptAgenrenaAllowFrom = createTopLevelChannelParsedAllowFromPrompt({
@@ -60,23 +52,18 @@ export const agenrenaSetupAdapter: ChannelSetupAdapter = {
       channel,
       patch: name?.trim() ? { name: name.trim() } : {},
     }),
-  validateInput: ({ input }) => {
-    const typedInput = input as { useEnv?: boolean; token?: string };
-    if (!typedInput.useEnv && !typedInput.token?.trim()) {
-      return "Agenrena requires --api-key or --use-env.";
-    }
-    return null;
-  },
-  applyAccountConfig: ({ cfg, input }) => {
-    const typedInput = input as { useEnv?: boolean; token?: string };
-    return patchTopLevelChannelConfigSection({
+  validateInput: () =>
+    resolveAgenrenaCliCredentials().configured
+      ? null
+      : "Agenrena CLI is not logged in. Run: agenrena auth login",
+  applyAccountConfig: ({ cfg }) =>
+    patchTopLevelChannelConfigSection({
       cfg,
       channel,
       enabled: true,
-      clearFields: typedInput.useEnv ? ["apiKey"] : undefined,
-      patch: typedInput.useEnv ? {} : { apiKey: typedInput.token?.trim() },
-    });
-  },
+      clearFields: ["apiKey"],
+      patch: {},
+    }),
 };
 
 export const agenrenaSetupWizard: ChannelSetupWizard = {
@@ -85,10 +72,10 @@ export const agenrenaSetupWizard: ChannelSetupWizard = {
   resolveShouldPromptAccountIds: () => false,
   status: createStandardChannelSetupStatus({
     channelLabel: "Agenrena",
-    configuredLabel: "configured",
-    unconfiguredLabel: "needs API key",
+    configuredLabel: "CLI login detected",
+    unconfiguredLabel: "needs CLI login",
     configuredHint: "configured",
-    unconfiguredHint: "needs API key",
+    unconfiguredHint: "run agenrena auth login",
     configuredScore: 1,
     unconfiguredScore: 0,
     includeStatusLine: true,
@@ -98,62 +85,7 @@ export const agenrenaSetupWizard: ChannelSetupWizard = {
     title: "Agenrena setup",
     lines: AGENRENA_SETUP_HELP_LINES,
   },
-  envShortcut: {
-    prompt: "AGENRENA_API_KEY detected. Use env var?",
-    preferredEnvVar: "AGENRENA_API_KEY",
-    isAvailable: ({ cfg, accountId }) =>
-      accountId === DEFAULT_ACCOUNT_ID &&
-      Boolean(getEnvAgenrenaApiKey()) &&
-      !getPersistedAgenrenaApiKey(cfg),
-    apply: async ({ cfg }) =>
-      patchTopLevelChannelConfigSection({
-        cfg,
-        channel,
-        enabled: true,
-        clearFields: ["apiKey"],
-        patch: {},
-      }),
-  },
-  credentials: [
-    {
-      inputKey: "token",
-      providerHint: channel,
-      credentialLabel: "API key",
-      preferredEnvVar: "AGENRENA_API_KEY",
-      helpTitle: "Agenrena API key",
-      helpLines: AGENRENA_SETUP_HELP_LINES,
-      envPrompt: "AGENRENA_API_KEY detected. Use env var?",
-      keepPrompt: "Agenrena API key already configured. Keep it?",
-      inputPrompt: "Agenrena API key",
-      allowEnv: ({ accountId }) => accountId === DEFAULT_ACCOUNT_ID,
-      inspect: ({ cfg, accountId }) => {
-        const persistedApiKey = getPersistedAgenrenaApiKey(cfg);
-        const envApiKey = getEnvAgenrenaApiKey();
-        const account = resolveAgenrenaAccount(cfg, accountId);
-        return {
-          accountConfigured: account.configured,
-          hasConfiguredValue: Boolean(persistedApiKey),
-          resolvedValue: persistedApiKey,
-          envValue: envApiKey,
-        };
-      },
-      applyUseEnv: async ({ cfg }) =>
-        patchTopLevelChannelConfigSection({
-          cfg,
-          channel,
-          enabled: true,
-          clearFields: ["apiKey"],
-          patch: {},
-        }),
-      applySet: async ({ cfg, resolvedValue }) =>
-        patchTopLevelChannelConfigSection({
-          cfg,
-          channel,
-          enabled: true,
-          patch: { apiKey: resolvedValue },
-        }),
-    },
-  ],
+  credentials: [],
   dmPolicy: agenrenaDmPolicy,
   disable: (cfg) =>
     patchTopLevelChannelConfigSection({

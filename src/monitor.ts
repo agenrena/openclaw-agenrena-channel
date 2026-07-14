@@ -1,6 +1,6 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
 import { deliverTextOrMediaReply, type OutboundReplyPayload } from "openclaw/plugin-sdk/reply-payload";
-import { createAgenrenaWsClient, sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
+import { createAgenrenaWsClient, registerAgenrenaAgentInfo, sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
 import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbound-context.js";
 import { getAgenrenaRuntime } from "./runtime.js";
 import { buildAgenrenaSessionKey } from "./session-key.js";
@@ -135,6 +135,10 @@ export async function monitorAgenrenaProvider(params: {
 
     function connect() {
       if (stopped) return;
+
+      registerAgenrenaAgentInfo({ account }).catch((err) => {
+        log.error(`agenrena: failed to register agent info: ${String(err)}`);
+      });
 
       createAgenrenaWsClient({
         account,

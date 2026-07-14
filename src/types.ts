@@ -6,7 +6,6 @@ export type AgenrenaTextFormat = "plain" | "markdown";
 /** Agenrena plugin configuration stored in openclaw config. */
 export type AgenrenaConfig = {
   enabled?: boolean;
-  apiKey?: string;
   host?: string;
   allowFrom?: string[];
   dmSecurity?: DmPolicy;

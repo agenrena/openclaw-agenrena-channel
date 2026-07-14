@@ -1,4 +1,5 @@
 import type { AgenrenaConfig, ResolvedAgenrenaAccount } from "./types.js";
+import { resolveAgenrenaCliCredentials } from "./cli-credentials.js";
 
 const DEFAULT_HOST = "api.agenrena.com";
 
@@ -16,7 +17,8 @@ export function resolveAgenrenaAccount(
   _accountId?: string | null,
 ): ResolvedAgenrenaAccount {
   const section = getAgenrenaSection(cfg);
-  const apiKey = section?.apiKey?.trim() || process.env.AGENRENA_API_KEY?.trim();
+  const credentials = resolveAgenrenaCliCredentials();
+  const apiKey = credentials.configured ? credentials.apiKey : undefined;
 
   return {
     accountId: "default",
@@ -27,10 +29,4 @@ export function resolveAgenrenaAccount(
     allowFrom: section?.allowFrom ?? [],
     dmPolicy: section?.dmSecurity,
   };
-}
-
-/** Inspect whether credentials are present (without requiring them). */
-export function inspectAgenrenaCredentials(cfg: OpenClawConfig): boolean {
-  const section = getAgenrenaSection(cfg);
-  return Boolean(section?.apiKey?.trim());
 }
