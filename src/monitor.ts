@@ -5,7 +5,7 @@ import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbo
 import { getAgenrenaRuntime } from "./runtime.js";
 import { buildAgenrenaSessionKey } from "./session-key.js";
 import type { AgenrenaWsEvent, ResolvedAgenrenaAccount } from "./types.js";
-import { composeAgenrenaChatTarget } from "./chat-target.js";
+import { composeAgenrenaChatTarget, parseAgenrenaChatTarget } from "./chat-target.js";
 
 const CHANNEL_ID = "agenrena";
 const RECONNECT_DELAY_MS = 5_000;
@@ -65,6 +65,8 @@ async function dispatchInboundMessage(params: {
     sessionKey,
   });
 
+  const replyRoute = parseAgenrenaChatTarget(params.msg.target);
+
   await resolvedRt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
     ctx: msgCtx,
     cfg: currentCfg,
@@ -80,21 +82,29 @@ async function dispatchInboundMessage(params: {
           },
           text,
           sendText: async (nextText) => {
-            await sendAgenrenaMessage({
+            params.log.info(
+              `agenrena: sending text reply source=${replyRoute.source} chat_id=${replyRoute.chatId}`,
+            );
+            const result = await sendAgenrenaMessage({
               account: params.account,
               target: params.msg.target,
               text: nextText,
               replyTo: params.msg.messageId,
             });
+            params.log.info(`agenrena: text reply sent message_id=${result.message_id}`);
           },
           sendMedia: async ({ mediaUrl, caption }) => {
-            await sendAgenrenaMediaMessage({
+            params.log.info(
+              `agenrena: sending media reply source=${replyRoute.source} chat_id=${replyRoute.chatId}`,
+            );
+            const result = await sendAgenrenaMediaMessage({
               account: params.account,
               target: params.msg.target,
               mediaUrls: [mediaUrl],
               text: caption,
               replyTo: params.msg.messageId,
             });
+            params.log.info(`agenrena: media reply sent message_id=${result.message_id}`);
           },
         });
       },
@@ -103,6 +113,8 @@ async function dispatchInboundMessage(params: {
       },
     },
   });
+
+  params.log.info(`agenrena: reply dispatch completed inbound_message_id=${params.msg.messageId}`);
 }
 
 /** Start the WebSocket monitor with auto-reconnect. */
@@ -145,6 +157,9 @@ export async function monitorAgenrenaProvider(params: {
         account,
         abortSignal,
         onMessage: (event: AgenrenaWsEvent) => {
+          log.info(
+            `agenrena: received inbound message_id=${event.id} source=${event.source} chat_id=${event.chat_id} sender_id=${event.sender.id}`,
+          );
           const messageType = event.message_type ?? "text";
           if (messageType !== "text" && messageType !== "image") {
             log.info(`agenrena: skipping unsupported inbound message_type=${messageType}`);

@@ -14,6 +14,7 @@ import { buildAgenrenaHubRouteFields, parseAgenrenaChatTarget } from "./chat-tar
 const DEFAULT_HOST = "api.agenrena.com";
 const AGENRENA_THUMBNAIL_MAX_SIDE = 300;
 const AGENRENA_THUMBNAIL_JPEG_QUALITY = 80;
+const AGENRENA_ERROR_BODY_MAX_LENGTH = 2_000;
 // Temporary compatibility until the backend accepts agenrena-openclaw-plugin/<version>.
 const AGENRENA_USER_AGENT = "agenrena-hermes-adapter/0.4.0";
 
@@ -56,7 +57,13 @@ async function requestAgenrenaJson<T>(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Agenrena request failed: ${res.status} ${res.statusText}`);
+    const responseBody = await res.text().catch(() => "");
+    const normalizedBody = responseBody.trim().slice(0, AGENRENA_ERROR_BODY_MAX_LENGTH);
+    throw new Error(
+      `Agenrena request failed: ${res.status} ${res.statusText}${
+        normalizedBody ? `: ${normalizedBody}` : ""
+      }`,
+    );
   }
 
   return (await res.json()) as T;
