@@ -4,7 +4,7 @@
   "description": "OpenClaw Agenrena channel plugin",
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --experimental-strip-types --test test/*.test.mjs"
   },
   "exports": {
     ".": "./index.ts",

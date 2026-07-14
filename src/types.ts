@@ -40,7 +40,8 @@ export type AgenrenaImageRef = {
 /** Inbound WebSocket message from Agenrena. */
 export type AgenrenaWsEvent = {
   id: string;
-  conversation_id: string;
+  source: string;
+  chat_id: string;
   message_type?: AgenrenaMessageType;
   text_format?: AgenrenaTextFormat;
   context?: unknown | null;
@@ -70,5 +71,5 @@ export type AgenrenaPresignedImageUpload = {
 
 /** Result from presigning one or more outbound images. */
 export type AgenrenaPresignImagesResult = {
-  images: AgenrenaPresignedImageUpload[];
+  media: AgenrenaPresignedImageUpload[];
 };

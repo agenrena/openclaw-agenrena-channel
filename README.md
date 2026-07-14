@@ -29,3 +29,10 @@ The plugin uses the same credential lookup order as the Agenrena CLI:
 
 The OpenClaw channel configuration contains only channel settings such as
 `enabled`, `host`, `allowFrom`, and `dmSecurity`.
+
+## Routing contract
+
+The plugin uses Agenrena's hub routing contract. Inbound WebSocket messages
+must contain `source` and `chat_id`; outbound requests send the same two fields.
+OpenClaw targets preserve both values as `<source>:<chat_id>`, for example
+`agenrena:550e8400-e29b-41d4-a716-446655440000`.

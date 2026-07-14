@@ -7,6 +7,7 @@ import { sendAgenrenaMediaMessage, sendAgenrenaMessage } from "./client.js";
 import { monitorAgenrenaProvider } from "./monitor.js";
 import { agenrenaSetupAdapter, agenrenaSetupWizard } from "./setup-surface.js";
 import type { ResolvedAgenrenaAccount } from "./types.js";
+import { isAgenrenaChatTarget } from "./chat-target.js";
 
 const CHANNEL_ID = "agenrena";
 type AgenrenaSendTextContext = Parameters<NonNullable<ChannelOutboundAdapter["sendText"]>>[0];
@@ -65,10 +66,13 @@ export const agenrenaPlugin = createChatChannelPlugin({
         "Agenrena CLI is not logged in. Run: agenrena auth login",
     },
     messaging: {
-      normalizeTarget: (target: string) => target.trim() || undefined,
+      normalizeTarget: (target: string) => {
+        const normalized = target.trim();
+        return normalized && isAgenrenaChatTarget(normalized) ? normalized : undefined;
+      },
       targetResolver: {
-        looksLikeId: (id: string) => Boolean(id?.trim()),
-        hint: "<channel_id>",
+        looksLikeId: (id: string) => isAgenrenaChatTarget(id),
+        hint: "<source>:<chat_id>",
       },
     },
     directory: createEmptyChannelDirectoryAdapter(),
@@ -110,7 +114,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
         if (!account.apiKey) return;
         await sendAgenrenaMessage({
           account,
-          channelId: id,
+          target: id,
           text: message,
         });
       },
@@ -125,7 +129,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
         const account = resolveAgenrenaAccount(cfg);
         const result = await sendAgenrenaMessage({
           account,
-          channelId: to,
+          target: to,
           text,
           replyTo: replyToId,
         });
@@ -144,7 +148,7 @@ export const agenrenaPlugin = createChatChannelPlugin({
         const account = resolveAgenrenaAccount(cfg);
         const result = await sendAgenrenaMediaMessage({
           account,
-          channelId: to,
+          target: to,
           mediaUrls: mediaUrl ? [mediaUrl] : [],
           text,
           replyTo: replyToId,

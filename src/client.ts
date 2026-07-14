@@ -9,6 +9,7 @@ import type {
   AgenrenaWsEvent,
   ResolvedAgenrenaAccount,
 } from "./types.js";
+import { buildAgenrenaHubRouteFields, parseAgenrenaChatTarget } from "./chat-target.js";
 
 const DEFAULT_HOST = "api.agenrena.com";
 const AGENRENA_THUMBNAIL_MAX_SIDE = 300;
@@ -106,30 +107,32 @@ async function uploadToPresignedPutUrl(params: {
 
 export async function presignAgenrenaImages(params: {
   account: ResolvedAgenrenaAccount;
+  source: string;
   count: number;
 }): Promise<AgenrenaPresignImagesResult> {
   return await requestAgenrenaJson<AgenrenaPresignImagesResult>({
     account: params.account,
-    path: "/api/agent-api/channels/messages/images/presign/",
+    path: "/api/agent-api/hub/media/presign/",
     method: "POST",
-    body: { count: params.count },
+    body: { source: params.source, count: params.count },
   });
 }
 
 export async function sendAgenrenaTextMessage(params: {
   account: ResolvedAgenrenaAccount;
-  channelId: string;
+  target: string;
   text: string;
   textFormat?: AgenrenaTextFormat;
   replyTo?: string | null;
 }): Promise<AgenrenaSendResult> {
-  const { account, channelId, text, textFormat, replyTo } = params;
+  const { account, target, text, textFormat, replyTo } = params;
+  const route = buildAgenrenaHubRouteFields(target);
   return await requestAgenrenaJson<AgenrenaSendResult>({
     account,
     path: "/api/agent-api/channels/messages/send/",
     method: "POST",
     body: {
-      conversation_id: channelId,
+      ...route,
       message_type: "text",
       text_format: textFormat ?? "markdown",
       text,
@@ -140,16 +143,17 @@ export async function sendAgenrenaTextMessage(params: {
 
 export async function sendAgenrenaImageMessage(params: {
   account: ResolvedAgenrenaAccount;
-  channelId: string;
+  target: string;
   images: AgenrenaImageRef[];
   replyTo?: string | null;
 }): Promise<AgenrenaSendResult> {
+  const route = buildAgenrenaHubRouteFields(params.target);
   return await requestAgenrenaJson<AgenrenaSendResult>({
     account: params.account,
     path: "/api/agent-api/channels/messages/send/",
     method: "POST",
     body: {
-      conversation_id: params.channelId,
+      ...route,
       message_type: "image",
       images: params.images,
       ...buildReplyToBody(params.replyTo),
@@ -160,7 +164,7 @@ export async function sendAgenrenaImageMessage(params: {
 export async function sendAgenrenaMediaMessage(
   params: {
     account: ResolvedAgenrenaAccount;
-    channelId: string;
+    target: string;
     mediaUrls: string[];
     text?: string;
     replyTo?: string | null;
@@ -174,7 +178,7 @@ export async function sendAgenrenaMediaMessage(
     }
     return await sendAgenrenaTextMessage({
       account: params.account,
-      channelId: params.channelId,
+      target: params.target,
       text,
       replyTo: params.replyTo,
     });
@@ -200,18 +204,20 @@ export async function sendAgenrenaMediaMessage(
     }),
   );
 
+  const route = parseAgenrenaChatTarget(params.target);
   const presigned = await presignAgenrenaImages({
     account: params.account,
+    source: route.source,
     count: loadedMedia.length,
   });
-  if (presigned.images.length !== loadedMedia.length) {
+  if (presigned.media.length !== loadedMedia.length) {
     throw new Error(
-      `Agenrena presign count mismatch: requested ${loadedMedia.length}, received ${presigned.images.length}.`,
+      `Agenrena presign count mismatch: requested ${loadedMedia.length}, received ${presigned.media.length}.`,
     );
   }
 
   await Promise.all(
-    presigned.images.map(async (entry, index) => {
+    presigned.media.map(async (entry, index) => {
       const media = loadedMedia[index];
       await uploadToPresignedPutUrl({
         uploadUrl: entry.image_upload_url,
@@ -230,8 +236,8 @@ export async function sendAgenrenaMediaMessage(
   // Send image first (primary content, more likely to fail), then text as a separate message.
   const imageResult = await sendAgenrenaImageMessage({
     account: params.account,
-    channelId: params.channelId,
-    images: presigned.images.map((entry) => ({ id: entry.id })),
+    target: params.target,
+    images: presigned.media.map((entry) => ({ id: entry.id })),
     replyTo: params.replyTo,
   });
 
@@ -239,7 +245,7 @@ export async function sendAgenrenaMediaMessage(
   if (text) {
     await sendAgenrenaTextMessage({
       account: params.account,
-      channelId: params.channelId,
+      target: params.target,
       text,
       replyTo: params.replyTo,
     });
@@ -253,10 +259,11 @@ export function createAgenrenaWsClient(params: {
   account: ResolvedAgenrenaAccount;
   onMessage: (event: AgenrenaWsEvent) => void;
   onError?: (err: Error) => void;
+  onInvalidPayload?: (reason: string) => void;
   onClose?: () => void;
   abortSignal?: AbortSignal;
 }): WebSocket {
-  const { account, onMessage, onError, onClose, abortSignal } = params;
+  const { account, onMessage, onError, onInvalidPayload, onClose, abortSignal } = params;
   const host = resolveHost(account);
   const url = `wss://${host}/ws/agent/events/?token=${account.apiKey}`;
 
@@ -265,9 +272,17 @@ export function createAgenrenaWsClient(params: {
   ws.on("message", (raw) => {
     try {
       const parsed = JSON.parse(String(raw)) as AgenrenaWsEvent;
-      if (parsed.id && parsed.conversation_id && parsed.sender?.id) {
-        onMessage(parsed);
+      const missing = [
+        !parsed.id && "id",
+        !parsed.source && "source",
+        !parsed.chat_id && "chat_id",
+        !parsed.sender?.id && "sender.id",
+      ].filter(Boolean) as string[];
+      if (missing.length > 0) {
+        onInvalidPayload?.(`missing required fields: ${missing.join(", ")}`);
+        return;
       }
+      onMessage(parsed);
     } catch {
       onError?.(new Error("agenrena: failed to parse WebSocket message"));
     }
@@ -325,7 +340,7 @@ export async function registerAgenrenaAgentInfo(params: {
 /** Send a message to Agenrena via REST API. */
 export async function sendAgenrenaMessage(params: {
   account: ResolvedAgenrenaAccount;
-  channelId: string;
+  target: string;
   text: string;
   textFormat?: AgenrenaTextFormat;
   replyTo?: string | null;

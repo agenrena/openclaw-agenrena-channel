@@ -55,7 +55,7 @@ function buildAgenrenaUntrustedContext(
 
 export type AgenrenaInboundMessage = {
   messageId: string;
-  channelId: string;
+  target: string;
   senderId: string;
   senderName: string;
   text: string;
@@ -103,11 +103,11 @@ export async function buildAgenrenaInboundContext<TContext>(params: {
     RawBody: msg.text,
     CommandBody: msg.text,
     From: `agenrena:${msg.senderId}`,
-    To: `agenrena:${msg.channelId}`,
+    To: `agenrena:${msg.target}`,
     SessionKey: sessionKey,
     AccountId: account.accountId,
     OriginatingChannel: CHANNEL_ID,
-    OriginatingTo: `agenrena:${msg.channelId}`,
+    OriginatingTo: `agenrena:${msg.target}`,
     ChatType: "direct",
     SenderName: msg.senderName,
     SenderId: msg.senderId,

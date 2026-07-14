@@ -5,6 +5,7 @@ import { buildAgenrenaInboundContext, type AgenrenaInboundMessage } from "./inbo
 import { getAgenrenaRuntime } from "./runtime.js";
 import { buildAgenrenaSessionKey } from "./session-key.js";
 import type { AgenrenaWsEvent, ResolvedAgenrenaAccount } from "./types.js";
+import { composeAgenrenaChatTarget } from "./chat-target.js";
 
 const CHANNEL_ID = "agenrena";
 const RECONNECT_DELAY_MS = 5_000;
@@ -52,7 +53,7 @@ async function dispatchInboundMessage(params: {
   const sessionKey = buildAgenrenaSessionKey({
     agentId: route.agentId,
     accountId: params.account.accountId,
-    channelId: params.msg.channelId,
+    channelId: params.msg.target,
     dmScope: currentCfg.session?.dmScope,
     identityLinks: currentCfg.session?.identityLinks,
   });
@@ -81,7 +82,7 @@ async function dispatchInboundMessage(params: {
           sendText: async (nextText) => {
             await sendAgenrenaMessage({
               account: params.account,
-              channelId: params.msg.channelId,
+              target: params.msg.target,
               text: nextText,
               replyTo: params.msg.messageId,
             });
@@ -89,7 +90,7 @@ async function dispatchInboundMessage(params: {
           sendMedia: async ({ mediaUrl, caption }) => {
             await sendAgenrenaMediaMessage({
               account: params.account,
-              channelId: params.msg.channelId,
+              target: params.msg.target,
               mediaUrls: [mediaUrl],
               text: caption,
               replyTo: params.msg.messageId,
@@ -157,7 +158,10 @@ export async function monitorAgenrenaProvider(params: {
           }
           const msg: AgenrenaInboundMessage = {
             messageId: event.id,
-            channelId: event.conversation_id,
+            target: composeAgenrenaChatTarget({
+              source: event.source,
+              chatId: event.chat_id,
+            }),
             senderId: event.sender.id,
             senderName: event.sender.display_name ?? event.sender.name ?? event.sender.id,
             text,
@@ -173,6 +177,9 @@ export async function monitorAgenrenaProvider(params: {
         },
         onError: (err) => {
           log.error(`agenrena: WebSocket error: ${String(err)}`);
+        },
+        onInvalidPayload: (reason) => {
+          log.error(`agenrena: dropped invalid WebSocket payload: ${reason}`);
         },
         onClose: () => {
           if (stopped) return;
