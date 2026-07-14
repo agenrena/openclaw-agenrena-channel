@@ -13,6 +13,8 @@ import type {
 const DEFAULT_HOST = "api.agenrena.com";
 const AGENRENA_THUMBNAIL_MAX_SIDE = 300;
 const AGENRENA_THUMBNAIL_JPEG_QUALITY = 80;
+// Temporary compatibility until the backend accepts agenrena-openclaw-plugin/<version>.
+const AGENRENA_USER_AGENT = "agenrena-hermes-adapter/0.4.0";
 
 type OutboundMediaAccessParams = {
   mediaAccess?: {
@@ -47,6 +49,7 @@ async function requestAgenrenaJson<T>(params: {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${params.account.apiKey}`,
+      "User-Agent": AGENRENA_USER_AGENT,
     },
     body: params.body ? JSON.stringify(params.body) : undefined,
   });
