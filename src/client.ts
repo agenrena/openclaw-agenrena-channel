@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import { loadOutboundMediaFromUrl } from "openclaw/plugin-sdk/outbound-media";
-import { hasAlphaChannel, resizeToJpeg, resizeToPng } from "openclaw/plugin-sdk/media-runtime";
+import { getImageMetadata, resizeToJpeg } from "openclaw/plugin-sdk/media-runtime";
 import type {
   AgenrenaImageRef,
   AgenrenaPresignImagesResult,
@@ -12,8 +12,10 @@ import type {
 import { buildAgenrenaHubRouteFields, parseAgenrenaChatTarget } from "./chat-target.js";
 
 const DEFAULT_HOST = "api.agenrena.com";
+const AGENRENA_IMAGE_JPEG_QUALITY = 85;
 const AGENRENA_THUMBNAIL_MAX_SIDE = 300;
 const AGENRENA_THUMBNAIL_JPEG_QUALITY = 80;
+const AGENRENA_IMAGE_CONTENT_TYPE = "image/jpeg";
 const AGENRENA_ERROR_BODY_MAX_LENGTH = 2_000;
 // Temporary compatibility until the backend accepts agenrena-openclaw-plugin/<version>.
 const AGENRENA_USER_AGENT = "agenrena-hermes-adapter/0.4.0";
@@ -69,30 +71,48 @@ async function requestAgenrenaJson<T>(params: {
   return (await res.json()) as T;
 }
 
-async function buildThumbnailBuffer(
-  buffer: Buffer,
-): Promise<{ buffer: Buffer; contentType: "image/png" | "image/jpeg" }> {
-  const preserveAlpha = await hasAlphaChannel(buffer).catch(() => false);
-  if (preserveAlpha) {
-    return {
-      buffer: await resizeToPng({
-        buffer,
-        maxSide: AGENRENA_THUMBNAIL_MAX_SIDE,
-        compressionLevel: 6,
-        withoutEnlargement: true,
-      }),
-      contentType: "image/png",
-    };
+type PreparedAgenrenaImage = {
+  buffer: Buffer;
+  width: number;
+  height: number;
+  thumbnailBuffer: Buffer;
+  thumbnailWidth: number;
+  thumbnailHeight: number;
+};
+
+async function requireImageMetadata(buffer: Buffer, label: string) {
+  const metadata = await getImageMetadata(buffer);
+  if (!metadata || metadata.width <= 0 || metadata.height <= 0) {
+    throw new Error(`Agenrena could not determine ${label} dimensions.`);
   }
+  return metadata;
+}
+
+async function prepareAgenrenaImage(buffer: Buffer): Promise<PreparedAgenrenaImage> {
+  const sourceMetadata = await requireImageMetadata(buffer, "source image");
+  const imageBuffer = await resizeToJpeg({
+    buffer,
+    maxSide: Math.max(sourceMetadata.width, sourceMetadata.height),
+    quality: AGENRENA_IMAGE_JPEG_QUALITY,
+    withoutEnlargement: true,
+  });
+  const imageMetadata = await requireImageMetadata(imageBuffer, "JPEG image");
+
+  const thumbnailBuffer = await resizeToJpeg({
+    buffer: imageBuffer,
+    maxSide: AGENRENA_THUMBNAIL_MAX_SIDE,
+    quality: AGENRENA_THUMBNAIL_JPEG_QUALITY,
+    withoutEnlargement: true,
+  });
+  const thumbnailMetadata = await requireImageMetadata(thumbnailBuffer, "JPEG thumbnail");
 
   return {
-    buffer: await resizeToJpeg({
-      buffer,
-      maxSide: AGENRENA_THUMBNAIL_MAX_SIDE,
-      quality: AGENRENA_THUMBNAIL_JPEG_QUALITY,
-      withoutEnlargement: true,
-    }),
-    contentType: "image/jpeg",
+    buffer: imageBuffer,
+    width: imageMetadata.width,
+    height: imageMetadata.height,
+    thumbnailBuffer,
+    thumbnailWidth: thumbnailMetadata.width,
+    thumbnailHeight: thumbnailMetadata.height,
   };
 }
 
@@ -108,7 +128,13 @@ async function uploadToPresignedPutUrl(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Agenrena upload failed: ${res.status} ${res.statusText}`);
+    const responseBody = await res.text().catch(() => "");
+    const normalizedBody = responseBody.trim().slice(0, AGENRENA_ERROR_BODY_MAX_LENGTH);
+    throw new Error(
+      `Agenrena upload failed: ${res.status} ${res.statusText}${
+        normalizedBody ? `: ${normalizedBody}` : ""
+      }`,
+    );
   }
 }
 
@@ -201,13 +227,7 @@ export async function sendAgenrenaMediaMessage(
       if (loaded.kind !== "image" && !isImageContentType(loaded.contentType)) {
         throw new Error(`Agenrena only supports outbound image replies (got ${loaded.contentType ?? "unknown"}).`);
       }
-      const thumbnail = await buildThumbnailBuffer(loaded.buffer);
-      return {
-        buffer: loaded.buffer,
-        contentType: loaded.contentType,
-        thumbnailBuffer: thumbnail.buffer,
-        thumbnailContentType: thumbnail.contentType,
-      };
+      return await prepareAgenrenaImage(loaded.buffer);
     }),
   );
 
@@ -229,12 +249,12 @@ export async function sendAgenrenaMediaMessage(
       await uploadToPresignedPutUrl({
         uploadUrl: entry.image_upload_url,
         buffer: media.buffer,
-        contentType: media.contentType,
+        contentType: AGENRENA_IMAGE_CONTENT_TYPE,
       });
       await uploadToPresignedPutUrl({
         uploadUrl: entry.thumbnail_upload_url,
         buffer: media.thumbnailBuffer,
-        contentType: media.thumbnailContentType,
+        contentType: AGENRENA_IMAGE_CONTENT_TYPE,
       });
     }),
   );
@@ -244,7 +264,18 @@ export async function sendAgenrenaMediaMessage(
   const imageResult = await sendAgenrenaImageMessage({
     account: params.account,
     target: params.target,
-    images: presigned.media.map((entry) => ({ id: entry.id })),
+    images: presigned.media.map((entry, index) => {
+      const media = loadedMedia[index];
+      return {
+        id: entry.id,
+        width: media.width,
+        height: media.height,
+        thumbnail_width: media.thumbnailWidth,
+        thumbnail_height: media.thumbnailHeight,
+        size_bytes: media.buffer.length,
+        mime_type: AGENRENA_IMAGE_CONTENT_TYPE,
+      };
+    }),
     replyTo: params.replyTo,
   });
 

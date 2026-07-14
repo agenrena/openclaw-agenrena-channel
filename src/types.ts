@@ -35,6 +35,12 @@ export type AgenrenaImage = {
 /** Image reference used when sending an Agenrena image message. */
 export type AgenrenaImageRef = {
   id: string;
+  width?: number;
+  height?: number;
+  thumbnail_width?: number;
+  thumbnail_height?: number;
+  size_bytes?: number;
+  mime_type?: string;
 };
 
 /** Inbound WebSocket message from Agenrena. */
